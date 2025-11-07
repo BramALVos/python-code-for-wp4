@@ -491,7 +491,11 @@ class Application:
         self.selection_size = rl.Vector3(0,0,0)
         self.selection_origin = rl.Vector3(0,0,0)
         if self.mouse_free and not self.layer_selected:
+
             if self.transition_animation < 1:
+
+                # this code is for moving the camera to the original position
+                # after it has been moved to above the warehouse
                 self.transition_animation += rl.get_frame_time()
                 self.transition_animation = min(1, self.transition_animation)
                 camera = rl_camera_lerp(self.new_camera, self.original_camera, 
@@ -499,6 +503,7 @@ class Application:
                 if self.transition_animation == 1:
                     self._active_engine_request.set()
             else:
+                # this code is for selecting a layer
                 for layer in range(self.plane.y - 2, 0, -1):
                     selection_start = rl.Vector3(0.5, layer - 1, 0)
                     selection_end = rl.Vector3(self.plane.x - 0.5, layer, 
@@ -519,12 +524,15 @@ class Application:
                             self.layer_selected = True
                             self.active_layer = layer - 1
                             self.transition_animation = 0
-                            print(f"{self.layer_selected = }")
                         return camera
                 else:
                     self.active_layer = None
         elif self.mouse_free and self.layer_selected:
+
             if self.transition_animation < 1:
+
+                # this code is for moving the camera to a position above the
+                # warehouse
                 if self.transition_animation == 0:
                     self.original_camera = rl_camera_copy(camera)
                 self.new_camera = rl.Camera3D(
@@ -549,6 +557,8 @@ class Application:
                 camera = rl_camera_lerp(self.original_camera, self.new_camera, 
                                         self.transition_animation)
             else:
+
+                # this code is for selecting a specific container in a layer
                 for x in range(self.plane.x - 1):
                     for z in range(self.plane.z):
                         if self.containers[x][z] <= self.active_layer:
@@ -750,6 +760,10 @@ class Application:
     def _draw_containers(self, active_layer=None):
         """
         Draw the containers in the warehouse as a cube
+        Arguments:
+            active_layer (none | int): The layer which is selected
+        Returns:
+            None / image on the screen
         """
         for ix, z in enumerate(self.containers):
             for iz, x in enumerate(z):
@@ -906,6 +920,15 @@ class Application:
             raise threading.ThreadError("Engine thread stopped")
 
     def update_text(self, text: str):
+        """
+        Update the text on the screen (used for cycle time and energy display)
+        Arguments:
+            text (str): The text to be displayed
+        Returns:
+            None
+        Raises:
+            A ThreadError when the render thread (aka engine thread) has died
+        """
         with self.cmd_lock:
             self._display_text = text
         if not self._engine_is_running:
@@ -921,7 +944,7 @@ class Application:
         self._active_engine_request.clear()
         self._active_engine_request.wait()
         if not self._engine_is_running:
-            raise threading.ThreadError("Engine thread stopped")
+            raise StopIteration("Engine thread stopped - no fatal")
 
         return self.input_location
 

@@ -1,6 +1,6 @@
 import unittest
 from crane_controller import *
-from main import *
+from crane_simulator import *
 
 
 class Vec3iTest(unittest.TestCase):

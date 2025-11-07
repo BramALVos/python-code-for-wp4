@@ -40,5 +40,4 @@ Here are some cool examples to get you started:
 
 Some cool examples for linux users:
 
-`python3 crane_simulator.py < input_file.csv --cli-only -o - | awk 'BEGIN { FS = ";" } ; { sum += 1 } END { if (NR > 0) print sum / NR / 60 "min" }'` (this will display the average cycle time for input_file.csv)
-
+`python3 crane_simulator.py < input_file.csv --cli-only -o - | awk 'BEGIN { FS = ";" } ; { sum += $1 } END { if (NR > 0) print sum / NR / 60 "min" }'` (this will display the average cycle time for input_file.csv)

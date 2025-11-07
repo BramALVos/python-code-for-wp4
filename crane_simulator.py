@@ -20,7 +20,7 @@ MARGIN = 0.250
 
 ACCELERATION = [0.2, 0.35, 0.2]
 MAX_VELOCITY = [40 / 60, 8 / 60, 32 / 60]
-ACCELERATION_RESISTANCE = [1, 9.81, 1]
+ACCELERATION_RESISTANCE = [1., 9.81, 1.] # resistances have been assumed
 SIMULATION_SPEED = 10
 MASS = 32_000
 ATTACH_TIME = 10
@@ -71,6 +71,7 @@ def calculate_cycle_time(distance: tuple, components=False):
                 t.append((acceleration_time, 0.))
             else:
                 t.append(acceleration_time)
+            continue
 
         constant_speed_distance = x_total - acceleration_distance * 2
         constant_speed_time = constant_speed_distance / v[i]
@@ -335,7 +336,8 @@ def read_stdin_numbers(delimiter=';'):
                                  f"not {len(line)}!")
             yield (int(line[0]), int(line[1]), int(line[2]))
     except EOFError:
-        raise StopIteration
+        return
+        #raise StopIteration
 
 
 def application_loop(warehouse_contents: tuple[list], 
@@ -382,13 +384,13 @@ def application_loop(warehouse_contents: tuple[list],
                 )
                 app.set_crane_position(truck_position)
 
-            if gui and positions is None:
-                coords= app.get_container()
-            else:
-                try:
+            try:
+                if gui and positions is None:
+                    coords= app.get_container()
+                else:
                     coords = Position(*next(positions))
-                except StopIteration:
-                    break
+            except StopIteration:
+                break
 
             contents = warehouse_contents
             if reset_warehouse:
@@ -507,9 +509,11 @@ def debug_print(*args, **kwargs):
 def main():
     """
     The main function of the program
-    Needs further detailing
+    This function handles the argument parsing and calls the main 
+    application loop. It will write the results at the end to the specified 
+    output file.
     """
-
+    
     parser = argparse.ArgumentParser(
         prog="main.py",
         description="A warehouse crane simulator for determining cycle times "
@@ -531,7 +535,8 @@ def main():
                        help="Don't reset the warehouse after each retrival",
                        action="store_true")
     parser.add_argument('-A', '--tmp-store-algorithm',
-                        help="give the name of a store algorithm")
+                        help="Select the algorithm for finding temporary spots"
+                             " for containers (options are LIN and RAD)")
     parser.add_argument('-S', '--simulation-speed',
                         type=float,
                         help="time of each step in ms")
@@ -610,6 +615,11 @@ def main():
     if args.tmp_store_algorithm is not None:
         if args.tmp_store_algorithm == "LIN":
             retreval_function = get_free_spot_linear
+        elif args.tmp_store_algorithm == "RAD":
+            retreval_function = get_nearest_free_spot
+        else:
+            print("\n\x1b[31mInvalid retrieval algorithm, falling back to RAD"
+                  "\x1b[0m", file=stderr)
 
 
     # create the warehouse layout
@@ -647,8 +657,16 @@ def main():
         if DEBUG:
             traceback.print_exc(file=stderr)
         exit(1)
+    try:
+        write_csv(output_file, output)
+    except BrokenPipeError:
+        # this is to prevent utilities like 'head' from crashing the program
+        ...
+    except Exception as e:
+        print(f"\n\x1b[31m{e}\x1b[0m\n\n\tExiting (no saving)...", file=stderr)
+        exit(1)
 
-    write_csv(output_file, output)
+    exit(0)
 
 
 if __name__ == '__main__':
